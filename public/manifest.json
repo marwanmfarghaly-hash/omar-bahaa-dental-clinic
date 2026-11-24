@@ -1,0 +1,19 @@
+{
+  "name": "Dental Clinic - د. عمر بهاء الدين",
+  "short_name": "DentalClinic",
+  "description": "عيادة د. عمر بهاء الدين لزراعة وتجميل الأسنان",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f766e",
+  "orientation": "portrait-primary",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

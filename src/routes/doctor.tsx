@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Lock, LogOut, Search, Trash2, CalendarX, Settings, ClipboardList, Plus } from "lucide-react";
+import { Lock, LogOut, Search, Trash2, CalendarX, Settings, ClipboardList, Plus, Bell } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useClinicData, type Appointment, type Status } from "@/lib/clinic-store";
+import type { Appointment, Status } from "@/lib/clinic-store";
+import { doctorLogin, getDoctorData, saveSettings, savePushSubscription, updateAppointment } from "@/lib/clinic.functions";
 import { businessDate } from "@/lib/clinic-time";
 
 export const Route = createFileRoute("/doctor")({
@@ -27,15 +29,20 @@ const statusLabel: Record<Status, string> = { confirmed: "مؤكد", completed: 
 const statusCls: Record<Status, string> = { confirmed: "bg-accent text-accent-foreground", completed: "bg-primary text-primary-foreground", cancelled: "bg-destructive/15 text-destructive" };
 
 function DoctorPage() {
-  const { data, ready, update } = useClinicData();
-  const [unlocked, setUnlocked] = useState(false);
+  const [password, setPassword] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const [pw, setPw] = useState("");
+  const qc = useQueryClient();
+  const q_ = useQuery({ queryKey: ["doctor", password], queryFn: () => getDoctorData({ data: { password: password! } }), enabled: !!password, refetchInterval: 30000 });
+  const unlocked = !!password;
+  const refresh = () => qc.invalidateQueries({ queryKey: ["doctor"] });
   const [err, setErr] = useState(false);
   const [tab, setTab] = useState<"appts" | "history" | "off" | "settings">("appts");
   const [date, setDate] = useState("");
   const [status, setStatus] = useState<"" | Status>("");
   const [q, setQ] = useState("");
-  useEffect(() => { setUnlocked(window.sessionStorage.getItem(SESSION) === "1"); }, []);
+  useEffect(() => { setPassword(window.sessionStorage.getItem(SESSION)); setReady(true); }, []);
+  const logout = () => { window.sessionStorage.removeItem(SESSION); setPassword(null); setPw(""); };
 
   useEffect(() => { document.documentElement.dir = "rtl"; document.documentElement.lang = "ar"; }, []);
 
@@ -43,7 +50,7 @@ function DoctorPage() {
   if (!unlocked) {
     return (
       <div dir="rtl" className="grid min-h-screen place-items-center bg-muted/50 px-4">
-        <form onSubmit={(e) => { e.preventDefault(); if (pw === data.doctorPassword) { window.sessionStorage.setItem(SESSION, "1"); setUnlocked(true); } else setErr(true); }} className="w-full max-w-sm space-y-4 rounded-3xl border bg-card p-8 shadow-sm">
+        <form onSubmit={async (e) => { e.preventDefault(); const r = await doctorLogin({ data: { password: pw } }); if (r.ok) { window.sessionStorage.setItem(SESSION, pw); setPassword(pw); } else setErr(true); }} className="w-full max-w-sm space-y-4 rounded-3xl border bg-card p-8 shadow-sm">
           <Lock className="mx-auto h-10 w-10 text-primary" />
           <h1 className="text-center text-xl font-bold">لوحة تحكم الطبيب</h1>
           <Input type="password" autoFocus placeholder="كلمة المرور" value={pw} onChange={(e) => { setPw(e.target.value); setErr(false); }} />
@@ -54,6 +61,11 @@ function DoctorPage() {
       </div>
     );
   }
+
+  if (q_.isError) { logout(); return null; }
+  if (!q_.data) return <div className="grid min-h-screen place-items-center text-muted-foreground">جارٍ التحميل...</div>;
+  const data = q_.data;
+  const pass = password!;
 
   const tabs = [
     { id: "appts", label: "المواعيد", icon: ClipboardList },
@@ -67,13 +79,14 @@ function DoctorPage() {
       <header className="sticky top-0 z-30 border-b bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div><div className="font-bold">لوحة د. عمر بهاء الدين</div><div className="text-xs text-muted-foreground">Dental Clinic</div></div>
-          <Button size="sm" variant="ghost" onClick={() => { window.sessionStorage.removeItem(SESSION); setUnlocked(false); setPw(""); }} className="gap-1"><LogOut className="h-4 w-4" />خروج</Button>
+          <Button size="sm" variant="ghost" onClick={logout} className="gap-1"><LogOut className="h-4 w-4" />خروج</Button>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2">
           {tabs.map((t) => <button key={t.id} onClick={() => setTab(t.id)} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm ${tab === t.id ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}><t.icon className="h-4 w-4" />{t.label}</button>)}
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">
+        <PushToggle password={pass} vapidKey={data.vapidPublicKey} />
         {tab === "appts" && <Appointments />}
         {tab === "history" && <History />}
         {tab === "off" && <OffDays />}
@@ -83,7 +96,8 @@ function DoctorPage() {
   );
 
   function svc(id: string) { return data.services.find((s) => s.id === id)?.ar ?? id; }
-  function patch(id: string, p: Partial<Appointment>) { update((d) => ({ ...d, appointments: d.appointments.map((a) => (a.id === id ? { ...a, ...p } : a)) })); }
+  async function patch(id: string, p: { status?: Status; doctorNotes?: string; treatmentPlan?: string; remove?: boolean }) { await updateAppointment({ data: { password: pass, id, ...p } }); await refresh(); }
+  async function save(p: Omit<Parameters<typeof saveSettings>[0]["data"], "password">) { await saveSettings({ data: { password: pass, ...p } }); await refresh(); }
 
   function Card({ a }: { a: Appointment }) {
     const [notes, setNotes] = useState(a.doctorNotes);
@@ -102,7 +116,7 @@ function DoctorPage() {
         <div className="mt-3 flex flex-wrap gap-2">
           {(Object.keys(statusLabel) as Status[]).map((s) => <Button key={s} size="sm" variant={a.status === s ? "default" : "outline"} onClick={() => patch(a.id, { status: s })}>{statusLabel[s]}</Button>)}
           <Button size="sm" variant="ghost" onClick={() => setOpen(!open)}>الملاحظات وخطة العلاج</Button>
-          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm("حذف الموعد؟")) update((d) => ({ ...d, appointments: d.appointments.filter((x) => x.id !== a.id) })); }}><Trash2 className="h-4 w-4" /></Button>
+          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm("حذف الموعد؟")) void patch(a.id, { remove: true }); }}><Trash2 className="h-4 w-4" /></Button>
         </div>
         {open && (
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -159,12 +173,12 @@ function DoctorPage() {
         <p className="text-sm text-muted-foreground">الأيام المحددة هنا لن تظهر للمرضى عند الحجز.</p>
         <div className="flex gap-2">
           <Input type="date" value={d} onChange={(e) => setD(e.target.value)} />
-          <Button onClick={() => { if (d) { update((x) => ({ ...x, offDays: Array.from(new Set([...x.offDays, d])).sort() })); setD(""); } }}><Plus className="h-4 w-4" />إضافة</Button>
+          <Button onClick={() => { if (d) { void save({ offDays: Array.from(new Set([...data.offDays, d])).sort() }); setD(""); } }}><Plus className="h-4 w-4" />إضافة</Button>
         </div>
         {data.offDays.map((o) => (
           <div key={o} className="flex items-center justify-between rounded-xl border bg-card px-4 py-2">
             <span>{o}</span>
-            <Button size="sm" variant="ghost" onClick={() => update((x) => ({ ...x, offDays: x.offDays.filter((y) => y !== o) }))}><Trash2 className="h-4 w-4" /></Button>
+            <Button size="sm" variant="ghost" onClick={() => void save({ offDays: data.offDays.filter((y) => y !== o) })}><Trash2 className="h-4 w-4" /></Button>
           </div>
         ))}
       </div>
@@ -183,11 +197,11 @@ function DoctorPage() {
           <Input dir="ltr" value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} placeholder="الهاتف" />
           <Input value={info.addressAr} onChange={(e) => setInfo({ ...info, addressAr: e.target.value })} placeholder="العنوان بالعربية" />
           <Input dir="ltr" value={info.addressEn} onChange={(e) => setInfo({ ...info, addressEn: e.target.value })} placeholder="Address (English)" />
-          <Button onClick={() => { update((d) => ({ ...d, info })); setMsg("تم الحفظ"); }}>حفظ البيانات</Button>
+          <Button onClick={() => { void save({ info }).then(() => setMsg("تم الحفظ")); }}>حفظ البيانات</Button>
           <h2 className="pt-4 font-bold">تغيير كلمة المرور</h2>
           <div className="flex gap-2">
             <Input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="كلمة مرور جديدة (4 أحرف على الأقل)" />
-            <Button onClick={() => { if (newPw.length >= 4) { update((d) => ({ ...d, doctorPassword: newPw })); setNewPw(""); setMsg("تم تغيير كلمة المرور"); } }}>تغيير</Button>
+            <Button onClick={() => { if (newPw.length >= 4) { void save({ newPassword: newPw }).then(() => { window.sessionStorage.setItem(SESSION, newPw); setPassword(newPw); setNewPw(""); setMsg("تم تغيير كلمة المرور"); }); } }}>تغيير</Button>
           </div>
           {msg && <p className="text-sm text-primary">{msg}</p>}
         </section>
@@ -202,7 +216,7 @@ function DoctorPage() {
           ))}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setServices([...services, { id: crypto.randomUUID(), ar: "خدمة جديدة", en: "New service" }])}><Plus className="h-4 w-4" />إضافة خدمة</Button>
-            <Button onClick={() => { update((d) => ({ ...d, services })); setMsg("تم حفظ الخدمات"); }}>حفظ الخدمات</Button>
+            <Button onClick={() => { void save({ services }).then(() => setMsg("تم حفظ الخدمات")); }}>حفظ الخدمات</Button>
           </div>
         </section>
       </div>
@@ -212,4 +226,49 @@ function DoctorPage() {
 
 function Stat({ n, l }: { n: number; l: string }) {
   return <div className="rounded-2xl border bg-card p-4 text-center"><div className="text-2xl font-bold text-primary">{n}</div><div className="text-xs text-muted-foreground">{l}</div></div>;
+}
+
+function b64ToBytes(b: string) {
+  const s = atob(b.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (b.length % 4)) % 4));
+  return Uint8Array.from(s, (c) => c.charCodeAt(0));
+}
+
+function PushToggle({ password, vapidKey }: { password: string; vapidKey: string }) {
+  const [state, setState] = useState<"idle" | "on" | "busy" | "unsupported" | "ios" | "denied" | "error">("idle");
+  useEffect(() => {
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    const ios = /iPhone|iPad|iPod/i.test(nav.userAgent);
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) { setState(ios && !standalone ? "ios" : "unsupported"); return; }
+    if (Notification.permission === "denied") { setState("denied"); return; }
+    navigator.serviceWorker.getRegistration("/push-sw.js").then((r) => r?.pushManager.getSubscription()).then((s) => { if (s && Notification.permission === "granted") setState("on"); });
+  }, []);
+  const enable = async () => {
+    setState("busy");
+    try {
+      if ((await Notification.requestPermission()) !== "granted") { setState("denied"); return; }
+      const reg = await navigator.serviceWorker.register("/push-sw.js");
+      await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(vapidKey) }));
+      const j = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+      await savePushSubscription({ data: { password, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth } });
+      setState("on");
+    } catch (e) { console.error(e); setState("error"); }
+  };
+  const msg: Record<typeof state, string> = {
+    idle: "فعّل التنبيهات على هذا الموبايل عشان يوصلك إشعار بكل حجز جديد وتذكير قبل كل ميعاد بساعة.",
+    on: "التنبيهات شغالة على هذا الجهاز ✅",
+    busy: "جارٍ التفعيل...",
+    unsupported: "المتصفح ده مش بيدعم التنبيهات. جرّب Chrome على أندرويد أو Safari على آيفون.",
+    ios: "على الآيفون: ثبّت التطبيق الأول من زر المشاركة ← «إضافة إلى الشاشة الرئيسية»، وافتحه من الأيقونة، وبعدين فعّل التنبيهات.",
+    denied: "التنبيهات مقفولة من إعدادات المتصفح. افتح إعدادات الموقع واسمح بالإشعارات.",
+    error: "حصلت مشكلة في التفعيل. لو إنت جوّه صفحة المعاينة، افتح الموقع المنشور مباشرة وجرّب تاني.",
+  };
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4">
+      <div className="flex items-center gap-2 text-sm"><Bell className="h-5 w-5 text-primary" />{msg[state]}</div>
+      {(state === "idle" || state === "error") && <Button size="sm" onClick={enable}>تفعيل التنبيهات</Button>}
+      {state === "on" && <Button size="sm" variant="outline" onClick={enable}>إرسال إشعار تجريبي</Button>}
+    </div>
+  );
 }

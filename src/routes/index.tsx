@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useClinicLanguage } from "@/hooks/use-clinic-language";
-import { buildIcs, occupiedCount, SLOT_CAPACITY, useClinicData, type Appointment } from "@/lib/clinic-store";
+import { buildIcs, SLOT_CAPACITY, type Appointment } from "@/lib/clinic-store";
+import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { bookAppointment, getPublicClinic } from "@/lib/clinic.functions";
+
+const clinicQuery = queryOptions({ queryKey: ["public-clinic"], queryFn: () => getPublicClinic(), refetchInterval: 60000 });
 import { businessDate, dateAfterDays, hourlyTimes, isClinicDateOpen, formatClinicDate, clinicDateTimeToIso } from "@/lib/clinic-time";
 
 export const Route = createFileRoute("/")({
@@ -20,6 +24,7 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(clinicQuery),
   component: Home,
 });
 
@@ -27,7 +32,9 @@ const icons = [Stethoscope, ScanLine, Sparkles, Activity, Crown, Brush, Sun, Bon
 
 function Home() {
   const { language: lang, setLanguage } = useClinicLanguage();
-  const { data, update } = useClinicData();
+  const { data } = useSuspenseQuery(clinicQuery);
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
   const ar = lang === "ar";
   const t = (a: string, e: string) => (ar ? a : e);
 
@@ -53,20 +60,19 @@ function Home() {
   const nowHour = Number(new Intl.DateTimeFormat("en", { timeZone: "Africa/Cairo", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
   const times = hourlyTimes(data.info.opensAt, data.info.closesAt);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!serviceId) return setError(t("اختر الخدمة المطلوبة.", "Choose a service."));
     if (name.trim().length < 3) return setError(t("اكتب الاسم بالكامل.", "Enter your full name."));
     if (!/^01\d{9}$/.test(phone.replace(/\s/g, ""))) return setError(t("اكتب رقم موبايل صحيحاً (11 رقم).", "Enter a valid 11-digit mobile number."));
     if (!date || !time) return setError(t("اختر اليوم والوقت.", "Choose a day and time."));
-    let created: Appointment | null = null;
-    update((d) => {
-      if (occupiedCount(d.appointments, date, time) >= SLOT_CAPACITY) return d;
-      created = { id: crypto.randomUUID(), name: name.trim(), phone: phone.replace(/\s/g, ""), serviceId, date, time, note: note.trim(), status: "confirmed", doctorNotes: "", treatmentPlan: "", createdAt: new Date().toISOString() };
-      return { ...d, appointments: [...d.appointments, created] };
-    });
-    if (!created) return setError(t("هذا الوقت اكتمل، اختر وقتاً آخر.", "This time is full, choose another."));
-    setError(""); setDone(created);
+    setBusy(true);
+    try {
+      const res = await bookAppointment({ data: { name: name.trim(), phone: phone.replace(/\s/g, ""), serviceId, date, time, note: note.trim() } });
+      await qc.invalidateQueries({ queryKey: ["public-clinic"] });
+      if (!res.ok) return setError(res.error === "full" ? t("هذا الوقت اكتمل، اختر وقتاً آخر.", "This time is full, choose another.") : t("تعذر الحجز، حاول مرة أخرى.", "Booking failed, please try again."));
+      setError(""); setDone(res.appointment);
+    } catch { setError(t("تعذر الاتصال، حاول مرة أخرى.", "Connection failed, please try again.")); } finally { setBusy(false); }
   };
 
   const svcName = (id: string) => { const s = data.services.find((x) => x.id === id); return s ? (ar ? s.ar : s.en) : ""; };
@@ -161,7 +167,7 @@ function Home() {
                 {!date ? <p className="text-sm text-muted-foreground">{t("اختر اليوم لعرض الأوقات المتاحة.", "Choose a day to see available times.")}</p> : (
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                     {times.map((tm) => {
-                      const left = SLOT_CAPACITY - occupiedCount(data.appointments, date, tm);
+                      const left = SLOT_CAPACITY - (data.counts[`${date} ${tm}`] ?? 0);
                       const past = date === today && Number(tm.slice(0, 2)) <= nowHour;
                       const disabled = left <= 0 || past;
                       return (
@@ -179,7 +185,7 @@ function Home() {
               </div>
               <Field label={t("ملاحظات (اختياري)", "Notes (optional)")}><Textarea value={note} onChange={(e) => setNote(e.target.value)} /></Field>
               {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-              <Button type="submit" size="lg" className="w-full">{t("تأكيد الحجز", "Confirm appointment")}</Button>
+              <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? t("جارٍ الحجز...", "Booking...") : t("تأكيد الحجز", "Confirm appointment")}</Button>
             </form>
           )}
         </div>

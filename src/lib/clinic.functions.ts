@@ -77,10 +77,10 @@ export const updateAppointment = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const db = await admin(); await (await push()).checkPassword(db, data.password);
     if (data.remove) { await db.from("appointments").delete().eq("id", data.id); return { ok: true }; }
-    const u: Record<string, string> = {};
-    if (data.status) u["status"] = data.status;
-    if (data.doctorNotes !== undefined) u["doctor_notes"] = data.doctorNotes;
-    if (data.treatmentPlan !== undefined) u["treatment_plan"] = data.treatmentPlan;
+    const u: { status?: string; doctor_notes?: string; treatment_plan?: string } = {};
+    if (data.status) u.status = data.status;
+    if (data.doctorNotes !== undefined) u.doctor_notes = data.doctorNotes;
+    if (data.treatmentPlan !== undefined) u.treatment_plan = data.treatmentPlan;
     await db.from("appointments").update(u).eq("id", data.id);
     return { ok: true };
   });

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DoctorRouteImport } from './routes/doctor'
 import { Route as QrRouteImport } from './routes/qr'
+import { Route as ApiPublicJobsRemindersRouteImport } from './routes/api/public/jobs/reminders'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,44 @@ const QrRoute = QrRouteImport.update({
   path: '/qr',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicJobsRemindersRoute = ApiPublicJobsRemindersRouteImport.update({
+  id: '/api/public/jobs/reminders',
+  path: '/api/public/jobs/reminders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/doctor': typeof DoctorRoute
   '/qr': typeof QrRoute
+  '/api/public/jobs/reminders': typeof ApiPublicJobsRemindersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/doctor': typeof DoctorRoute
   '/qr': typeof QrRoute
+  '/api/public/jobs/reminders': typeof ApiPublicJobsRemindersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/doctor': typeof DoctorRoute
   '/qr': typeof QrRoute
+  '/api/public/jobs/reminders': typeof ApiPublicJobsRemindersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/doctor' | '/qr'
+  fullPaths: '/' | '/doctor' | '/qr' | '/api/public/jobs/reminders'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/doctor' | '/qr'
-  id: '__root__' | '/' | '/doctor' | '/qr'
+  to: '/' | '/doctor' | '/qr' | '/api/public/jobs/reminders'
+  id: '__root__' | '/' | '/doctor' | '/qr' | '/api/public/jobs/reminders'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DoctorRoute: typeof DoctorRoute
   QrRoute: typeof QrRoute
+  ApiPublicJobsRemindersRoute: typeof ApiPublicJobsRemindersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QrRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/jobs/reminders': {
+      id: '/api/public/jobs/reminders'
+      path: '/api/public/jobs/reminders'
+      fullPath: '/api/public/jobs/reminders'
+      preLoaderRoute: typeof ApiPublicJobsRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DoctorRoute: DoctorRoute,
   QrRoute: QrRoute,
+  ApiPublicJobsRemindersRoute: ApiPublicJobsRemindersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

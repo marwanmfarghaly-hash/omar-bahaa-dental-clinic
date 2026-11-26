@@ -65,6 +65,7 @@ export type Database = {
           id: number
           info: Json
           off_days: string[]
+          reminder_settings: Json
           services: Json
           vapid_private: string | null
           vapid_public: string | null
@@ -74,6 +75,7 @@ export type Database = {
           id?: number
           info: Json
           off_days?: string[]
+          reminder_settings?: Json
           services: Json
           vapid_private?: string | null
           vapid_public?: string | null
@@ -83,6 +85,7 @@ export type Database = {
           id?: number
           info?: Json
           off_days?: string[]
+          reminder_settings?: Json
           services?: Json
           vapid_private?: string | null
           vapid_public?: string | null

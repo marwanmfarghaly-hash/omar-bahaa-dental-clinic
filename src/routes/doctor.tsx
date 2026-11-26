@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Appointment, Status } from "@/lib/clinic-store";
+import { EARLY_OPTIONS, LATE_OPTIONS } from "@/lib/clinic-reminders";
 import { doctorLogin, getDoctorData, saveSettings, savePushSubscription, updateAppointment } from "@/lib/clinic.functions";
 import { businessDate } from "@/lib/clinic-time";
 
@@ -99,6 +100,11 @@ function DoctorPage() {
   async function patch(id: string, p: { status?: Status; doctorNotes?: string; treatmentPlan?: string; remove?: boolean }) { await updateAppointment({ data: { password: pass, id, ...p } }); await refresh(); }
   async function save(p: Omit<Parameters<typeof saveSettings>[0]["data"], "password">) { await saveSettings({ data: { password: pass, ...p } }); await refresh(); }
 
+  function waLink(a: Appointment) {
+    const t = `مرحباً ${a.name}، نذكّركم بميعاد الكشف في عيادة د. عمر بهاء الدين يوم ${a.date} الساعة ${a.time} (${svc(a.serviceId)}). برجاء تأكيد الحضور بالرد على هذه الرسالة. شكراً لكم 🦷`;
+    return `https://wa.me/2${a.phone}?text=${encodeURIComponent(t)}`;
+  }
+
   function Card({ a }: { a: Appointment }) {
     const [notes, setNotes] = useState(a.doctorNotes);
     const [plan, setPlan] = useState(a.treatmentPlan);
@@ -115,6 +121,7 @@ function DoctorPage() {
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {(Object.keys(statusLabel) as Status[]).map((s) => <Button key={s} size="sm" variant={a.status === s ? "default" : "outline"} onClick={() => patch(a.id, { status: s })}>{statusLabel[s]}</Button>)}
+          <Button size="sm" variant="outline" className="border-green-600 text-green-700" asChild><a href={waLink(a)} target="_blank" rel="noreferrer">واتساب التأكيد</a></Button>
           <Button size="sm" variant="ghost" onClick={() => setOpen(!open)}>الملاحظات وخطة العلاج</Button>
           <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm("حذف الموعد؟")) void patch(a.id, { remove: true }); }}><Trash2 className="h-4 w-4" /></Button>
         </div>
@@ -190,8 +197,27 @@ function DoctorPage() {
     const [services, setServices] = useState(data.services);
     const [newPw, setNewPw] = useState("");
     const [msg, setMsg] = useState("");
+    const [rem, setRem] = useState(data.reminders);
     return (
       <div className="grid gap-6 lg:grid-cols-2">
+        <section className="space-y-4 rounded-2xl border bg-card p-5 lg:col-span-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0"><h2 className="font-bold">⏰ تذكير «الميعاد قرّب»</h2><p className="text-sm text-muted-foreground">إشعار تلقائي على موبايل العيادة عشان السكرتارية تأكد مع المريض.</p></div>
+            <button type="button" role="switch" aria-checked={rem.enabled} onClick={() => setRem({ ...rem, enabled: !rem.enabled })} className={`relative h-7 w-12 shrink-0 rounded-full transition ${rem.enabled ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${rem.enabled ? "right-1" : "right-6"}`} /></button>
+          </div>
+          <div className={`grid gap-3 sm:grid-cols-2 ${rem.enabled ? "" : "pointer-events-none opacity-50"}`}>
+            <label className="space-y-1 text-sm"><span className="font-medium">الحجز المبكر (قبل الميعاد بأكتر من كده)</span>
+              <select value={rem.earlyHours} onChange={(e) => setRem({ ...rem, earlyHours: Number(e.target.value) })} className="h-10 w-full rounded-md border bg-background px-3">
+                {EARLY_OPTIONS.map((h) => <option key={h} value={h}>نبّه قبلها بـ {h / 24 === 1 ? "يوم" : h / 24 === 2 ? "يومين" : `${h / 24} أيام`}</option>)}
+              </select></label>
+            <label className="space-y-1 text-sm"><span className="font-medium">الحجز القريب (قبل الميعاد بيوم أو يومين)</span>
+              <select value={rem.lateHours} onChange={(e) => setRem({ ...rem, lateHours: Number(e.target.value) })} className="h-10 w-full rounded-md border bg-background px-3">
+                {LATE_OPTIONS.map((h) => <option key={h} value={h}>نبّه قبلها بـ {h} ساعات</option>)}
+              </select></label>
+          </div>
+          <p className="text-xs text-muted-foreground">مثال: مريض حجز من أسبوع ← يوصلك تنبيه قبل ميعاده بـ {rem.earlyHours / 24 === 1 ? "يوم" : rem.earlyHours / 24 === 2 ? "يومين" : `${rem.earlyHours / 24} أيام`}. مريض حجز قبلها بيوم ← يوصلك تنبيه قبلها بـ {rem.lateHours} ساعات.</p>
+          <Button onClick={() => { void save({ reminders: rem }).then(() => setMsg("تم حفظ إعدادات التذكير")); }}>حفظ إعدادات التذكير</Button>
+        </section>
         <section className="space-y-3 rounded-2xl border bg-card p-5">
           <h2 className="font-bold">بيانات التواصل</h2>
           <Input dir="ltr" value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} placeholder="الهاتف" />

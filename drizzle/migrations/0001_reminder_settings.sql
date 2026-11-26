@@ -1,0 +1,1 @@
+ALTER TABLE public.clinic_settings ADD COLUMN reminder_settings jsonb NOT NULL DEFAULT '{"enabled": true, "earlyHours": 48, "lateHours": 12}'::jsonb;

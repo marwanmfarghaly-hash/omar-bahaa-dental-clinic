@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Appointment, ClinicInfo, Service, Status } from "@/lib/clinic-store";
 import { SLOT_CAPACITY } from "@/lib/clinic-store";
+import { defaultReminderSettings, type ReminderSettings } from "@/lib/clinic-reminders";
 
 async function admin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -59,10 +60,10 @@ export const getDoctorData = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const db = await admin(); const p = await push();
     await p.checkPassword(db, data.password);
-    const { data: s } = await db.from("clinic_settings").select("info, services, off_days").eq("id", 1).single();
+    const { data: s } = await db.from("clinic_settings").select("info, services, off_days, reminder_settings").eq("id", 1).single();
     const { data: rows } = await db.from("appointments").select("*").order("date").order("time");
     const vapid = await p.getVapid(db);
-    return { info: s!.info as ClinicInfo, services: s!.services as Service[], offDays: s!.off_days, appointments: (rows ?? []).map((r) => toAppt(r as Row)), vapidPublicKey: vapid.publicKey };
+    return { info: s!.info as ClinicInfo, services: s!.services as Service[], offDays: s!.off_days, reminders: { ...defaultReminderSettings, ...((s!.reminder_settings ?? {}) as Partial<ReminderSettings>) }, appointments: (rows ?? []).map((r) => toAppt(r as Row)), vapidPublicKey: vapid.publicKey };
   });
 
 const patchSchema = pw.extend({
@@ -90,12 +91,14 @@ const settingsSchema = pw.extend({
   services: z.array(z.object({ id: z.string().max(64), ar: z.string().max(200), en: z.string().max(200) })).max(50).optional(),
   offDays: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(500).optional(),
   newPassword: z.string().min(4).max(200).optional(),
+  reminders: z.object({ enabled: z.boolean(), earlyHours: z.number().int().min(1).max(168), lateHours: z.number().int().min(1).max(72) }).optional(),
 });
 export const saveSettings = createServerFn({ method: "POST" })
   .inputValidator((i: z.infer<typeof settingsSchema>) => settingsSchema.parse(i))
   .handler(async ({ data }) => {
     const db = await admin(); const p = await push(); await p.checkPassword(db, data.password);
-    const u: { info?: ClinicInfo; services?: Service[]; off_days?: string[]; doctor_password_hash?: string } = {};
+    const u: { info?: ClinicInfo; services?: Service[]; off_days?: string[]; doctor_password_hash?: string; reminder_settings?: ReminderSettings } = {};
+    if (data.reminders) u.reminder_settings = data.reminders;
     if (data.info) u.info = data.info;
     if (data.services) u.services = data.services;
     if (data.offDays) u.off_days = data.offDays;
@@ -110,6 +113,6 @@ export const savePushSubscription = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const db = await admin(); const p = await push(); await p.checkPassword(db, data.password);
     await db.from("push_subscriptions").upsert({ endpoint: data.endpoint, p256dh: data.p256dh, auth: data.auth });
-    await p.notifyStaff(db, "✅ تم تفعيل التنبيهات", "هتوصلك إشعارات الحجوزات الجديدة وتذكير قبل كل ميعاد بساعة.");
+    await p.notifyStaff(db, "✅ تم تفعيل التنبيهات", "هتوصلك إشعارات الحجوزات الجديدة وتذكير لما ميعاد أي مريض يقرّب.");
     return { ok: true };
   });

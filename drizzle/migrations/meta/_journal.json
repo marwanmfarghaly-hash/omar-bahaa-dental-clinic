@@ -8,6 +8,13 @@
       "when": 1795633201193,
       "tag": "0000_clinic_core",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795732971396,
+      "tag": "0001_reminder_settings",
+      "breakpoints": true
     }
   ]
 }

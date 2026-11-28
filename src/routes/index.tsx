@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Dental Clinic | د. عمر بهاء الدين - زراعة وتجميل الأسنان" },
-      { name: "description", content: "عيادة د. عمر بهاء الدين، استشاري وماجستير زراعة الأسنان. احجز موعدك أونلاين." },
+      { name: "description", content: "عيادة د. عمر بهاء الدين، ماجستير زراعة الأسنان. احجز موعدك أونلاين." },
       { property: "og:title", content: "Dental Clinic | د. عمر بهاء الدين" },
       { property: "og:description", content: "احجز كشفك في عيادة الأسنان - زراعة، تبييض، تركيبات وعلاج جذور." },
       { property: "og:type", content: "website" },
@@ -95,7 +95,7 @@ function Home() {
           <div>
             <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">{t("عيادة أسنان متخصصة", "Specialist dental care")}</span>
             <h1 className="mt-4 text-4xl font-extrabold leading-tight md:text-5xl">{t("د. عمر بهاء الدين", "Dr. Omar Bahaa El-Din")}</h1>
-            <p className="mt-2 text-lg font-semibold text-primary">{t("استشاري وماجستير زراعة الأسنان", "Consultant & Master of Dental Implantology")}</p>
+            <p className="mt-2 text-lg font-semibold text-primary">{t("ماجستير زراعة الأسنان", "Master of Dental Implantology")}</p>
             <p className="mt-4 max-w-md text-muted-foreground">{t("خبرة تخصصية في زراعة وتجميل الأسنان، ورعاية دقيقة تبدأ بالاستماع وتنتهي بخطة واضحة لك.", "Specialist experience in implants and cosmetic dentistry, with attentive care and a clear plan made for you.")}</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <a href="#booking"><Button size="lg" className="gap-2"><CalendarCheck className="h-5 w-5" />{t("احجز كشفك الآن", "Book your visit")}</Button></a>

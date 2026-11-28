@@ -9,7 +9,7 @@
 - **Clinic Identity & Contact**:
   * Clinic Name: Dental Clinic
   * Doctor: د. عمر بهاء الدين (Dr. Omar Bahaa El-Din)
-  * Title/Specialty: استشاري وماجستير زراعة الأسنان (Consultant & Master of Dental Implantology)
+  * Title/Specialty: ماجستير زراعة الأسنان (Master of Dental Implantology)
   * Address: ٢٦١ ه‍ شارع الضغط (261 H, El-Daght Street)
   * Hours: السبت إلى الخميس من 4:00 عصراً حتى 10:00 مساءً (الجمعة عطلة أسبوعية) / Saturday – Thursday: 4:00 PM – 10:00 PM (Africa/Cairo time)
   * Phone: 01286661471

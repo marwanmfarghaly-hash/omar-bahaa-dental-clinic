@@ -9,7 +9,7 @@ export function ClinicHeader({ lang, setLang }: { lang: Language; setLang: (l: L
     <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-lg text-primary-foreground">🦷</span>
+          <img src="/logo.png" alt="Dental Clinic" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full" />
           <span className="leading-tight">
             <span className="block font-bold">Dental Clinic</span>
             <span className="block text-xs text-muted-foreground">{lang === "ar" ? "د. عمر بهاء الدين" : "Dr. Omar Bahaa El-Din"}</span>

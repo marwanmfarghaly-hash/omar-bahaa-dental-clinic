@@ -4,7 +4,7 @@ self.addEventListener("push", (event) => {
   let d = { title: "Dental Clinic", body: "" };
   try { d = event.data.json(); } catch (_) { /* ignore */ }
   event.waitUntil(self.registration.showNotification(d.title, {
-    body: d.body, icon: "/favicon.ico", badge: "/favicon.ico", dir: "rtl", lang: "ar",
+    body: d.body, icon: "/icon-192.png", badge: "/badge-96.png", dir: "rtl", lang: "ar",
     vibrate: [200, 100, 200], requireInteraction: true, tag: String(Date.now()),
   }));
 });

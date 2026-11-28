@@ -53,7 +53,7 @@ function DoctorPage() {
       <div dir="rtl" className="grid min-h-screen place-items-center bg-muted/50 px-4">
         <form onSubmit={async (e) => { e.preventDefault(); const r = await doctorLogin({ data: { password: pw } }); if (r.ok) { window.sessionStorage.setItem(SESSION, pw); setPassword(pw); } else setErr(true); }} className="w-full max-w-sm space-y-4 rounded-3xl border bg-card p-8 shadow-sm">
           <Lock className="mx-auto h-10 w-10 text-primary" />
-          <h1 className="text-center text-xl font-bold">لوحة تحكم الطبيب</h1>
+          <img src="/logo.png" alt="Dental Clinic" width={80} height={80} className="mx-auto h-20 w-20 rounded-full" /><h1 className="text-center text-xl font-bold">لوحة تحكم الطبيب</h1>
           <Input type="password" autoFocus placeholder="كلمة المرور" value={pw} onChange={(e) => { setPw(e.target.value); setErr(false); }} />
           {err && <p className="text-sm text-destructive">كلمة المرور غير صحيحة</p>}
           <Button type="submit" className="w-full">دخول</Button>
@@ -79,7 +79,7 @@ function DoctorPage() {
     <div dir="rtl" className="min-h-screen bg-muted/40">
       <header className="sticky top-0 z-30 border-b bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div><div className="font-bold">لوحة د. عمر بهاء الدين</div><div className="text-xs text-muted-foreground">Dental Clinic</div></div>
+          <div className="flex items-center gap-2"><img src="/logo.png" alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full" /><div><div className="font-bold">لوحة د. عمر بهاء الدين</div><div className="text-xs text-muted-foreground">Dental Clinic</div></div></div>
           <Button size="sm" variant="ghost" onClick={logout} className="gap-1"><LogOut className="h-4 w-4" />خروج</Button>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2">

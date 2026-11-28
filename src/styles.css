@@ -156,3 +156,14 @@
     color: var(--color-foreground);
   }
 }
+
+/* اخفاء شارة لوفابل */
+#lovable-badge,
+[class*="lovable-badge"],
+[id*="lovable-badge"],
+a[href*="lovable.dev"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
